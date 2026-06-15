@@ -39,6 +39,32 @@ class Thread(BaseModel):
         description="List of unique participant identifiers in this thread."
     )
 
+    @property
+    def thread_id(self) -> str:
+        """Alias for the unique thread identifier."""
+        return self.id
+
+    @property
+    def parent_message(self) -> Optional[Message]:
+        """The parent message initiating the thread."""
+        return self.messages[0] if self.messages else None
+
+    @property
+    def replies(self) -> list[Message]:
+        """List of replies in the thread (excluding the parent message)."""
+        return self.messages[1:] if len(self.messages) > 1 else []
+
+    @property
+    def created_at(self) -> Optional[datetime.datetime]:
+        """Timestamp of the thread's first message."""
+        return self.messages[0].timestamp if self.messages else None
+
+    @property
+    def updated_at(self) -> Optional[datetime.datetime]:
+        """Timestamp of the thread's latest activity."""
+        return self.messages[-1].timestamp if self.messages else None
+
+
 
 class Event(BaseModel):
     """Represents a structured signal or event extracted from conversations."""
