@@ -1,0 +1,1 @@
+Prompt for event extraction from conversation threads.

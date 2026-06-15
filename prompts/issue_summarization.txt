@@ -1,0 +1,1 @@
+Prompt for summarizing issues/topics from threads.
