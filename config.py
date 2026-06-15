@@ -7,7 +7,7 @@ including paths, local model hosts, parameter thresholds, and logging settings.
 from pathlib import Path
 
 # =====================================================================
-# SECTION 1: PROJECT PATHS
+# PROJECT PATHS
 # =====================================================================
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -27,42 +27,45 @@ REPORTS_OUTPUT_DIR = OUTPUTS_DIR / "reports"
 LOGS_OUTPUT_DIR = OUTPUTS_DIR / "logs"
 
 # =====================================================================
-# SECTION 2: OLLAMA CONFIGURATION
+# OLLAMA CONFIGURATION
 # =====================================================================
 
 OLLAMA_HOST: str = "http://localhost:11434"
+OLLAMA_BASE_URL: str = OLLAMA_HOST
 OLLAMA_MODEL: str = "llama3.1:8b-instruct"
 OLLAMA_TIMEOUT_SECONDS: int = 120
+OLLAMA_TEMPERATURE: float = 0.0
+
 
 # =====================================================================
-# SECTION 3: EVENT EXTRACTION SETTINGS
+#  EVENT EXTRACTION SETTINGS
 # =====================================================================
 
 MIN_EVENT_CONFIDENCE: float = 0.70
 MAX_EVENTS_PER_BATCH: int = 50
 
 # =====================================================================
-# SECTION 4: ISSUE TRACKING SETTINGS
+# ISSUE TRACKING SETTINGS
 # =====================================================================
 
 ISSUE_MATCH_THRESHOLD: float = 0.85
 
 # =====================================================================
-# SECTION 5: REPORT GENERATION SETTINGS
+# REPORT GENERATION SETTINGS
 # =====================================================================
 
 MAX_CRITICAL_ISSUES: int = 10
 MAX_EXECUTIVE_FINDINGS: int = 5
 
 # =====================================================================
-# SECTION 6: LOGGING SETTINGS
+#LOGGING SETTINGS
 # =====================================================================
 
 LOG_LEVEL: str = "INFO"
 
 
 # =====================================================================
-# SECTION 7: FILE CREATION HELPER
+# FILE CREATION HELPER
 # =====================================================================
 
 def create_required_directories() -> None:
