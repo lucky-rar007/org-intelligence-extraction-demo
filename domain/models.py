@@ -320,12 +320,20 @@ class IssueCluster(BaseModel):
         default_factory=list,
         description="List of event IDs grouped under this cluster."
     )
+    supporting_thread_ids: list[str] = Field(
+        default_factory=list,
+        description="List of thread IDs grouped under this cluster."
+    )
     recommended_action: str = Field(description="Action recommendation for the founder.")
     owner_candidates: list[str] = Field(
         default_factory=list,
         description="List of candidates who can own resolving this cluster."
     )
     trend: str = Field(description="Trend status: NEW, STABLE, IMPROVING, WORSENING, RESOLVED.")
+    trend_history: list[dict[str, str]] = Field(
+        default_factory=list,
+        description="Historical list of trend values: [{'date': ..., 'trend': ...}]."
+    )
     risk_type: str = Field(description="The business risk classification type.")
     source_channels: list[str] = Field(
         default_factory=list,
@@ -474,6 +482,26 @@ class FounderReport(BaseModel):
         default_factory=list,
         description="Primary tracked issue clusters."
     )
+    worsening_clusters: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of worsening root-cause clusters."
+    )
+    new_clusters: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of newly discovered root-cause clusters."
+    )
+    long_running_clusters: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of long-running root-cause clusters."
+    )
+    delivery_risks: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of delivery-impacting root-cause clusters."
+    )
+    revenue_risks: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of revenue-impacting root-cause clusters."
+    )
     critical_actionables: list[dict[str, Any]] = Field(
         default_factory=list,
         description="Prioritized list of critical items requiring attention, sorted by attention > severity > recurrence."
@@ -538,6 +566,37 @@ class FounderReport(BaseModel):
         default_factory=dict,
         description="Quantitative pipeline metrics for this run."
     )
+
+
+class ClusterDefinition(BaseModel):
+    """Represents a permanent known cluster definition stored in registry.json."""
+    cluster_type_id: str = Field(description="Unique string identifier for the cluster type.")
+    name: str = Field(description="Name of the cluster type.")
+    description: str = Field(description="Detailed description of what this cluster type represents.")
+    business_area: str = Field(description="The primary business area impacted.")
+    risk_type: str = Field(description="The business risk type classification.")
+    parent_cluster: str = Field(description="The parent cluster ID in the hierarchical taxonomy.")
+    recommended_action: str = Field(default="", description="The recommended action for the cluster.")
+    keywords: list[str] = Field(default_factory=list, description="Keywords that identify issues in this cluster.")
+    example_titles: list[str] = Field(default_factory=list, description="Example titles of historical issues in this cluster.")
+
+
+class CandidateCluster(BaseModel):
+    """Represents a candidate cluster that has been proposed but not yet promoted."""
+    cluster_type_id: str = Field(description="Unique string identifier for the candidate cluster.")
+    name: str = Field(description="Proposed name of the cluster.")
+    description: str = Field(description="Proposed description of what the cluster represents.")
+    business_area: str = Field(description="The primary business area impacted.")
+    risk_type: str = Field(description="The business risk classification type.")
+    parent_cluster: str = Field(description="The parent cluster ID in the hierarchical taxonomy.")
+    recommended_action: str = Field(default="", description="The recommended action for the cluster.")
+    keywords: list[str] = Field(default_factory=list, description="Keywords identifying issues in this cluster.")
+    example_titles: list[str] = Field(default_factory=list, description="Example titles of issues supporting this candidate.")
+    confidence: float = Field(description="Discovery confidence score from LLM.")
+    first_seen: str = Field(description="Date when the candidate was first seen (YYYY-MM-DD).")
+    last_seen: str = Field(description="Date when the candidate was last seen (YYYY-MM-DD).")
+    supporting_issue_count: int = Field(default=1, description="Number of issues supporting this candidate.")
+    promotion_status: str = Field(default="CANDIDATE", description="Promotion lifecycle status (CANDIDATE, PROMOTED).")
 
 
 

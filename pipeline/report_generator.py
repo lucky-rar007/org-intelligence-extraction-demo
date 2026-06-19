@@ -121,6 +121,13 @@ class ReportGenerator:
             threads_processed, events, observations, issues, report_date
         )
 
+        # Step 9 Dashboard Section Computations
+        worsening_clusters = [c for c in (issue_clusters or []) if c.get("trend") == "WORSENING"]
+        new_clusters = [c for c in (issue_clusters or []) if c.get("trend") == "NEW"]
+        long_running_clusters = [c for c in (issue_clusters or []) if c.get("days_open", 0) > 5]
+        delivery_risks = [c for c in (issue_clusters or []) if c.get("risk_type") == "DELIVERY_RISK"]
+        revenue_risks = [c for c in (issue_clusters or []) if c.get("risk_type") == "REVENUE_RISK"]
+
         report = FounderReport(
             report_date=report_date,
             generated_at=now.isoformat(),
@@ -128,6 +135,11 @@ class ReportGenerator:
             executive_concerns=executive_concerns or [],
             founder_actionables=founder_actionables or [],
             high_risk_clusters=high_risk_clusters or [],
+            worsening_clusters=worsening_clusters,
+            new_clusters=new_clusters,
+            long_running_clusters=long_running_clusters,
+            delivery_risks=delivery_risks,
+            revenue_risks=revenue_risks,
             critical_actionables=critical_actionables,
             open_issues=open_issues,
             monitoring_issues=monitoring_issues,

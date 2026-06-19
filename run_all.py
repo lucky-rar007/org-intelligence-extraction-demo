@@ -42,6 +42,7 @@ def main():
     clear_directory_contents(config.EVENTS_OUTPUT_DIR)
     clear_directory_contents(config.OBSERVATIONS_OUTPUT_DIR)
     clear_directory_contents(config.ISSUES_OUTPUT_DIR)
+    clear_directory_contents(config.CLUSTERS_OUTPUT_DIR)
     clear_directory_contents(config.REPORTS_OUTPUT_DIR)
     clear_directory_contents(config.LOGS_OUTPUT_DIR)
 

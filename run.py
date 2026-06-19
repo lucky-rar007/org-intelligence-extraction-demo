@@ -40,6 +40,7 @@ from storage.issue_store import IssueStore
 from storage.report_store import ReportStore
 from storage.commitment_store import CommitmentStore
 from storage.cluster_store import ClusterStore
+from storage.cluster_registry import ClusterRegistry
 from llm.llm_client import LLMClient
 from utils.date_utils import parse_filename_date, format_date
 
@@ -310,7 +311,12 @@ def main() -> None:
     org_intel_engine = OrgIntelligenceEngine(commitment_store=commitment_store)
     all_commitments = org_intel_engine.process_commitments(new_commitments, messages, report_date)
 
-    clustering_engine = ClusteringEngine(cluster_store=cluster_store)
+    cluster_registry = ClusterRegistry()
+    clustering_engine = ClusteringEngine(
+        cluster_store=cluster_store,
+        cluster_registry=cluster_registry,
+        llm_client=llm_client
+    )
     issue_clusters = clustering_engine.cluster_issues(all_issues, report_date)
 
     from pipeline.actionable_generator import ActionableGenerator

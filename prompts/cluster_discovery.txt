@@ -1,0 +1,26 @@
+You are an organizational intelligence analyst.
+You are given an issue that does not fit any of the existing known clusters.
+
+Existing Known Clusters (Do NOT duplicate these or propose something that clearly fits inside them):
+{known_clusters}
+
+Issue to Analyze:
+Title: {issue_title}
+Summary: {issue_summary}
+Affected Team: {issue_team}
+Affected Area: {issue_areas}
+
+Determine if this issue warrants creating a new cluster type (e.g., if it represents a new recurring category of organizational problem, like hiring bottlenecks, security incidents, compliance blockers, procurement delays, sales engineering bottlenecks, etc. rather than just a one-off minor bug).
+Return JSON ONLY. Do not wrap in markdown code blocks. Ensure the output is valid JSON.
+
+Schema:
+{{
+  "create_new_cluster": true/false,
+  "cluster_name": "Proposed Cluster Name (e.g., Vendor Dependency Delays)",
+  "parent_cluster": "One of: revenue_risk, delivery_risk, people_risk, operational_risk, infrastructure_risk",
+  "risk_type": "One of: REVENUE_RISK, CUSTOMER_RISK, TEAM_RISK, INFRASTRUCTURE_RISK, DELIVERY_RISK, QUALITY_RISK, EXECUTION_RISK",
+  "description": "A description of the business problem this cluster represents.",
+  "recommended_action": "Specific recommended action for the founder to address this cluster.",
+  "keywords": ["keyword1", "keyword2", "phrase example"],
+  "confidence": 0.0 to 1.0 (float)
+}}
