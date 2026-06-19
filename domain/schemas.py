@@ -44,6 +44,37 @@ class EventExtractionResponse(BaseModel):
     )
 
 
+class ExtractedObservation(BaseModel):
+    """Represents a weak organizational signal extracted from conversations.
+
+    These are signals that should not be promoted to Events but must be
+    retained for pattern detection and intelligence aggregation.
+    """
+
+    title: str = Field(description="A short, descriptive title of the observation.")
+    description: str = Field(description="Detailed explanation of the observed signal.")
+    observation_type: str = Field(
+        description="The type of observation (maps to ObservationType enum values)."
+    )
+    severity: str = Field(
+        default="LOW",
+        description="The business impact severity (LOW, MEDIUM, HIGH, CRITICAL)."
+    )
+    confidence_score: float = Field(
+        description="The confidence score between 0.0 and 1.0.",
+        ge=0.0,
+        le=1.0
+    )
+    participants: list[str] = Field(
+        default_factory=list,
+        description="List of participants involved in the observation."
+    )
+    affected_areas: list[str] = Field(
+        default_factory=list,
+        description="Specific systems, teams, or areas related to the observation."
+    )
+
+
 class IssueMatchResponse(BaseModel):
     """Represents the LLM response when determining if a new event matches an existing issue."""
 

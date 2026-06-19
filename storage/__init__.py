@@ -1,1 +1,1 @@
-"""Storage interfaces for events, issues, and reports."""
+"""Storage interfaces for events, observations, issues, and reports."""

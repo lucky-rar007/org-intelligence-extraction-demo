@@ -10,7 +10,7 @@ import uuid
 import pydantic
 
 from domain.enums import EventType, IssueStatus, Severity, IntelligenceType
-from domain.models import Event, Issue, IntelligenceFinding, Report
+from domain.models import Event, Issue, IntelligenceFinding
 from domain.schemas import ExtractedEvent, FindingCandidate
 
 logger = logging.getLogger(__name__)
@@ -103,8 +103,25 @@ class ResponseParser:
         events = []
         for index, item in enumerate(event_dicts):
             try:
+                # Align fields from alternative LLM naming (e.g. summary, confidence)
+                if isinstance(item, dict):
+                    if "summary" in item and "description" not in item:
+                        item["description"] = item["summary"]
+                    if "confidence" in item and "confidence_score" not in item:
+                        item["confidence_score"] = item["confidence"]
+
+                    # Normalize event_type, severity, and status to match enums
+                    if "event_type" in item:
+                        item["event_type"] = self._normalize_event_type(item["event_type"])
+                    if "severity" in item:
+                        item["severity"] = self._normalize_severity(item["severity"])
+                    if "status" in item:
+                        item["status"] = self._normalize_status(item["status"])
+
                 # Validate using ExtractedEvent schema
                 ext_event = ExtractedEvent.model_validate(item)
+
+
                 
                 # Convert to domain Event object
                 event = Event(
@@ -128,27 +145,7 @@ class ResponseParser:
         logger.info("schema validation success")
         return events
 
-    def parse_issue(self, response_text: str) -> Issue:
-        """Parse JSON, validate Issue schema, and return the Issue model.
 
-        Args:
-            response_text: The raw JSON/text response from the LLM.
-
-        Returns:
-            An Issue domain model instance.
-
-        Raises:
-            ResponseParseError: If JSON parsing fails.
-            ResponseValidationError: If validation fails.
-        """
-        data = self.parse_json_response(response_text)
-        try:
-            issue = Issue.model_validate(data)
-            logger.info("schema validation success")
-            return issue
-        except pydantic.ValidationError as e:
-            logger.error("schema validation failure: %s", str(e))
-            raise ResponseValidationError(f"Schema validation failure for Issue: {e}") from e
 
     def parse_intelligence_finding(self, response_text: str) -> IntelligenceFinding:
         """Parse JSON, validate IntelligenceFinding schema/model, and return the domain object.
@@ -192,24 +189,95 @@ class ResponseParser:
                     f"Candidate validation details: {e_schema}"
                 ) from e_model
 
-    def parse_report(self, response_text: str) -> Report:
-        """Parse JSON, validate Report schema, and return the Report domain object.
 
-        Args:
-            response_text: The raw JSON/text response from the LLM.
 
-        Returns:
-            A Report domain model instance.
+    def _normalize_event_type(self, val: str) -> str:
+        """Helper to normalize free-form LLM event type strings to valid EventType values."""
+        if not val or not isinstance(val, str):
+            return val
+        cleaned = val.strip().replace(" ", "_").replace("-", "_").upper()
+        valid_types = {e.value for e in EventType}
+        if cleaned in valid_types:
+            return cleaned
 
-        Raises:
-            ResponseParseError: If JSON parsing fails.
-            ResponseValidationError: If validation fails.
-        """
-        data = self.parse_json_response(response_text)
-        try:
-            report = Report.model_validate(data)
-            logger.info("schema validation success")
-            return report
-        except pydantic.ValidationError as e:
-            logger.error("schema validation failure: %s", str(e))
-            raise ResponseValidationError(f"Schema validation failure for Report: {e}") from e
+        # Mappings of common variations to valid enums
+        synonyms = {
+            "CUSTOMER_COMPLAINT": "CLIENT_ESCALATION",
+            "CUSTOMER_REQUEST": "CLIENT_REQUEST",
+            "PROJECT_RISK": "RISK_INDICATOR",
+            "OPERATIONAL_RISK": "RISK_INDICATOR",
+            "RISK": "RISK_INDICATOR",
+            "DATABASE_ISSUE": "ENVIRONMENT_ISSUE",
+            "DEPLOYMENT_FAILURE": "PRODUCTION_INCIDENT",
+            "DEPLOYMENT_ISSUE": "ENVIRONMENT_ISSUE",
+            "BUILD_FAILURE": "INFRASTRUCTURE_ISSUE",
+            "NETWORK_ISSUE": "INFRASTRUCTURE_ISSUE",
+            "OUTAGE": "PRODUCTION_INCIDENT",
+            "INCIDENT": "PRODUCTION_INCIDENT",
+            "BLOCKER": "DELIVERY_BLOCKED",
+            "DELAY": "RELEASE_DELAY",
+        }
+        if cleaned in synonyms:
+            return synonyms[cleaned]
+
+        # Keyword mapping fallbacks
+        if "DELIVERY_DELAY" in cleaned or "RELEASE_DELAY" in cleaned or "DELAY" in cleaned:
+            return "RELEASE_DELAY"
+        if "BLOCK" in cleaned:
+            return "DELIVERY_BLOCKED"
+        if "RISK" in cleaned:
+            return "RISK_INDICATOR"
+        if "WAIT" in cleaned or "DEPEND" in cleaned:
+            return "DEPENDENCY_WAIT"
+        if "INCIDENT" in cleaned or "OUTAGE" in cleaned or "FAILURE" in cleaned:
+            return "PRODUCTION_INCIDENT"
+        if "INFRASTRUCTURE" in cleaned or "NETWORK" in cleaned or "BUILD" in cleaned:
+            return "INFRASTRUCTURE_ISSUE"
+        if "ENVIRONMENT" in cleaned or "DEPLOY" in cleaned:
+            return "ENVIRONMENT_ISSUE"
+        if "ESCALAT" in cleaned or "COMPLAINT" in cleaned:
+            return "CLIENT_ESCALATION"
+        if "REQUEST" in cleaned:
+            return "CLIENT_REQUEST"
+
+        for vt in valid_types:
+            if vt in cleaned or cleaned == vt:
+                return vt
+        return val
+
+    def _normalize_severity(self, val: str) -> str:
+        """Helper to normalize free-form LLM severity strings to valid Severity values."""
+        if not val or not isinstance(val, str):
+            return val
+        cleaned = val.strip().upper()
+        valid_severities = {e.value for e in Severity}
+        if cleaned in valid_severities:
+            return cleaned
+        for vs in valid_severities:
+            if vs in cleaned or cleaned in vs:
+                return vs
+        return val
+
+    def _normalize_status(self, val: str) -> str:
+        """Helper to normalize free-form LLM status strings to valid IssueStatus values."""
+        if not val or not isinstance(val, str):
+            return val
+        cleaned = val.strip().upper()
+        valid_statuses = {e.value for e in IssueStatus}
+        if cleaned in valid_statuses:
+            return cleaned
+        # Map legacy and common synonyms
+        synonyms = {
+            "ACTIVE": "OPEN",
+            "STALE": "CLOSED",
+            "FIXED": "RESOLVED",
+            "DONE": "RESOLVED",
+            "COMPLETED": "RESOLVED",
+            "ARCHIVED": "CLOSED",
+        }
+        if cleaned in synonyms:
+            return synonyms[cleaned]
+        for vs in valid_statuses:
+            if vs in cleaned or cleaned in vs:
+                return vs
+        return val

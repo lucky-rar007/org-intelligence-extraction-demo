@@ -3,12 +3,7 @@
 import logging
 from typing import Optional
 
-from config import (
-    OLLAMA_BASE_URL,
-    OLLAMA_MODEL,
-    OLLAMA_TIMEOUT_SECONDS,
-    OLLAMA_TEMPERATURE
-)
+import config
 from llm.providers.base_provider import BaseLLMProvider
 from llm.providers.ollama_provider import OllamaProvider
 
@@ -26,10 +21,10 @@ class LLMClient:
         if provider is None:
             # Local Ollama is the default provider
             self.provider: BaseLLMProvider = OllamaProvider(
-                base_url=OLLAMA_BASE_URL,
-                model_name=OLLAMA_MODEL,
-                timeout=OLLAMA_TIMEOUT_SECONDS,
-                temperature=OLLAMA_TEMPERATURE
+                base_url=config.OLLAMA_BASE_URL,
+                model_name=config.OLLAMA_MODEL,
+                timeout=config.OLLAMA_TIMEOUT_SECONDS,
+                temperature=config.OLLAMA_TEMPERATURE
             )
         else:
             self.provider = provider
@@ -80,21 +75,28 @@ class LLMClient:
             raise ValueError("Prompt cannot be empty.")
 
         logger.info("Request start: model=%s", self.model_name)
-        try:
-            response_text = self.provider.generate(prompt)
-            # Post-processing requirements
-            stripped_response = response_text.strip()
-            logger.info("Request success: model=%s", self.model_name)
-            return stripped_response
-        except TimeoutError as e:
-            logger.error("Request failure: request timed out for model=%s. Error: %s", self.model_name, str(e))
-            raise
-        except ConnectionError as e:
-            logger.error("Request failure: connection failed for model=%s. Error: %s", self.model_name, str(e))
-            raise
-        except ValueError as e:
-            logger.error("Request failure: invalid response for model=%s. Error: %s", self.model_name, str(e))
-            raise
-        except Exception as e:
-            logger.error("Request failure: unexpected error for model=%s. Error: %s", self.model_name, str(e))
-            raise RuntimeError(f"LLM generation failed: {e}") from e
+        
+        import time
+        max_attempts = 3
+        delay = 1.0
+        backoff_factor = 2.0
+        
+        for attempt in range(1, max_attempts + 1):
+            try:
+                response_text = self.provider.generate(prompt)
+                stripped_response = response_text.strip()
+                logger.info("Request success: model=%s", self.model_name)
+                return stripped_response
+            except (TimeoutError, ConnectionError) as e:
+                if attempt == max_attempts:
+                    logger.error("Request failure after %d attempts: model=%s. Error: %s", max_attempts, self.model_name, str(e))
+                    raise
+                logger.warning("Attempt %d failed with %s. Retrying in %.1fs...", attempt, type(e).__name__, delay)
+                time.sleep(delay)
+                delay *= backoff_factor
+            except ValueError as e:
+                logger.error("Request failure: invalid response for model=%s. Error: %s", self.model_name, str(e))
+                raise
+            except Exception as e:
+                logger.error("Request failure: unexpected error for model=%s. Error: %s", self.model_name, str(e))
+                raise RuntimeError(f"LLM generation failed: {e}") from e
