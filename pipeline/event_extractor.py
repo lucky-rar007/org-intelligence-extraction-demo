@@ -6,7 +6,7 @@ from typing import List, Optional
 from domain.models import Event, Thread
 from llm.llm_client import LLMClient
 from llm.prompt_loader import PromptLoader
-from llm.response_parser import ResponseParser
+from llm.response_parser import ResponseParser, ResponseParseError, ResponseValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -72,11 +72,25 @@ class EventExtractor:
                 variables={"thread_content": thread_content}
             )
 
-            # Generate response from LLM
-            response_text = self.llm_client.generate(prompt)
+            # Generate and parse with retries
+            max_retries = 3
+            events = []
+            for attempt in range(1, max_retries + 1):
+                try:
+                    logger.info("Extracting events from thread %s (attempt %d/%d)", thread.id, attempt, max_retries)
+                    # Generate response from LLM
+                    response_text = self.llm_client.generate(prompt)
 
-            # Parse and validate the response
-            events = self.response_parser.parse_events(response_text)
+                    # Parse and validate the response
+                    events = self.response_parser.parse_events(response_text)
+                    break
+                except (ResponseParseError, ResponseValidationError) as e:
+                    if attempt == max_retries:
+                        raise
+                    logger.warning(
+                        "Validation failed for thread %s on attempt %d/%d. Error: %s. Retrying...",
+                        thread.id, attempt, max_retries, str(e)
+                    )
 
             # Link the events back to this thread and update participants if empty
             for event in events:

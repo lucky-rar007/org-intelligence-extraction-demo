@@ -8,7 +8,7 @@ from domain.enums import CommitmentStatus
 from domain.models import Message, Commitment
 from llm.llm_client import LLMClient
 from llm.prompt_loader import PromptLoader
-from llm.response_parser import ResponseParser
+from llm.response_parser import ResponseParser, ResponseParseError, ResponseValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -90,11 +90,28 @@ class CommitmentExtractor:
                 }
             )
 
-            # Generate response from LLM
-            response_text = self.llm_client.generate(prompt)
+            # Generate and parse with retries
+            from llm.response_parser import ResponseParseError, ResponseValidationError
+            max_retries = 3
+            parsed_data = None
+            for attempt in range(1, max_retries + 1):
+                try:
+                    logger.info("Extracting commitments for %s (attempt %d/%d)", report_date, attempt, max_retries)
+                    # Generate response from LLM
+                    response_text = self.llm_client.generate(prompt)
 
-            # Parse the response (can be list of dicts)
-            parsed_data = self.response_parser.parse_json_response(response_text)
+                    # Parse the response (can be list of dicts)
+                    parsed_data = self.response_parser.parse_json_response(response_text)
+                    if not isinstance(parsed_data, list):
+                        raise ResponseValidationError("Expected a JSON list of commitments, got: " + str(type(parsed_data)))
+                    break
+                except (ResponseParseError, ResponseValidationError) as e:
+                    if attempt == max_retries:
+                        raise
+                    logger.warning(
+                        "Validation failed for commitments on date %s (attempt %d/%d). Error: %s. Retrying...",
+                        report_date, attempt, max_retries, str(e)
+                    )
             
             commitments = []
             if isinstance(parsed_data, list):

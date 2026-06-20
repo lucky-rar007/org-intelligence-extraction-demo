@@ -105,10 +105,22 @@ class ResponseParser:
             try:
                 # Align fields from alternative LLM naming (e.g. summary, confidence)
                 if isinstance(item, dict):
+                    # Check for empty or dummy placeholder event structures
+                    title = item.get("title", "")
+                    event_type = item.get("event_type", "")
+                    description = item.get("description", item.get("summary", ""))
+                    if (not title or not str(title).strip() or 
+                        not event_type or not str(event_type).strip() or
+                        not description or not str(description).strip()):
+                        logger.info("Skipping empty/dummy event structure at index %d", index)
+                        continue
+
                     if "summary" in item and "description" not in item:
                         item["description"] = item["summary"]
                     if "confidence" in item and "confidence_score" not in item:
                         item["confidence_score"] = item["confidence"]
+                    if "confidence_score" not in item:
+                        item["confidence_score"] = 1.0
 
                     # Normalize event_type, severity, and status to match enums
                     if "event_type" in item:

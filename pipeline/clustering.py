@@ -229,9 +229,24 @@ class ClusteringEngine:
                                 "issue_areas": ", ".join(issue.affected_areas) if issue.affected_areas else "None"
                             }
                         )
-                        response_text = self.llm_client.generate(prompt)
-                        from llm.response_parser import ResponseParser
-                        res_json = ResponseParser().parse_json_response(response_text)
+                        from llm.response_parser import ResponseParser, ResponseParseError, ResponseValidationError
+                        max_retries = 3
+                        res_json = None
+                        for attempt in range(1, max_retries + 1):
+                            try:
+                                logger.info("LLM cluster discovery for issue '%s' (attempt %d/%d)", issue.title, attempt, max_retries)
+                                response_text = self.llm_client.generate(prompt)
+                                res_json = ResponseParser().parse_json_response(response_text)
+                                if not isinstance(res_json, dict):
+                                    raise ResponseValidationError("Expected a JSON object from cluster discovery, got: " + str(type(res_json)))
+                                break
+                            except (ResponseParseError, ResponseValidationError) as e:
+                                if attempt == max_retries:
+                                    raise
+                                logger.warning(
+                                    "Validation failed for cluster discovery on issue '%s' (attempt %d/%d). Error: %s. Retrying...",
+                                    issue.title, attempt, max_retries, str(e)
+                                )
 
                         create_new = res_json.get("create_new_cluster", False)
                         confidence = res_json.get("confidence", 0.0)
